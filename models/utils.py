@@ -81,7 +81,7 @@ class MultiAttentionHead:
 class FeedForward:
     def __init__(self,config):
         self.linear_1 = nn.Linear(config.hidden_size , config.intermediate_size)
-        self.gelu = F.GELU()
+        self.gelu = nn.GELU()
         self.linear_2 = nn.Linear( config.intermediate_size , config.hidden_size )
         self.dropout = nn.dropout()
     
