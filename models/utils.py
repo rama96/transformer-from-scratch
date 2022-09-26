@@ -67,10 +67,17 @@ class AttentionHead:
         )
 
 class MultiAttentionHead:
+    """ Creates n_head Attention Heads , concats the outputs , runs them into a linear NN to get the output"""
     def __init__(self,config):
-        pass
+        
+        self.output_linear = nn.Linear(config.hidden_size , config.hidden_size)
+        self.attention_heads = [AttentionHead(config) for _ in config.num_heads]
+        
     def forward(self,x):
-        pass
+        out = torch.cat([h(x) for h in self.attention_heads] , dim=-1)
+        return self.output_linear(out)
+
+
 class FeedForward:
     def __init__(self,config):
         pass
