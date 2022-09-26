@@ -35,8 +35,7 @@ class Embeddings(nn.Module):
 
 
 def scalar_dot_product(q,k,v):
-    """ Contains 3 mains components  : 
-    
+    """ Accepts 3 args namely :     
     1. q - Query 
     2. k - Key 
     3. v - Value 
@@ -54,10 +53,19 @@ def scalar_dot_product(q,k,v):
 
 
 class AttentionHead:
+    """ Splits the inputs into query , key and value and then performs scalar dot product to get the output for the same """
     def __init__(self,config):
-        pass
+        
+        self.linear_k = nn.Linear(config.hidden_size , config.head_dim)
+        self.linear_v = nn.Linear(config.hidden_size , config.head_dim)
+        self.linear_q = nn.Linear(config.hidden_size , config.head_dim)
+
+
     def forward(self,x):
-        pass
+        return scalar_dot_product(
+            self.linear_q(x) , self.linear_k(x) , self.linear_v(x)
+        )
+
 class MultiAttentionHead:
     def __init__(self,config):
         pass
