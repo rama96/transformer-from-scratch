@@ -1,3 +1,4 @@
+""" Contains all the basic building blocks required to build a transformer from scratch """
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
