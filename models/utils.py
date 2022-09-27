@@ -52,7 +52,7 @@ def scalar_dot_product(q,k,v):
 
 
 
-class AttentionHead:
+class AttentionHead(nn.Module):
     """ Splits the inputs into query , key and value and then performs scalar dot product to get the output for the same """
     def __init__(self,config):
         
@@ -66,7 +66,7 @@ class AttentionHead:
             self.linear_q(x) , self.linear_k(x) , self.linear_v(x)
         )
 
-class MultiAttentionHead:
+class MultiAttentionHead(nn.Module):
     """ Creates n_head Attention Heads , concats the outputs , runs them into a linear NN to get the output"""
     def __init__(self,config):
         
@@ -78,7 +78,7 @@ class MultiAttentionHead:
         return self.output_linear(out)
 
 
-class FeedForward:
+class FeedForward(nn.Module):
     def __init__(self,config):
         self.linear_1 = nn.Linear(config.hidden_size , config.intermediate_size)
         self.gelu = nn.GELU()
