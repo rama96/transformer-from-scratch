@@ -47,6 +47,8 @@ def scalar_dot_product(q,k,v):
     """
     dim_k = k.size(-1)
     scores = torch.bmm(q,k.transpose(1,2)) / sqrt(dim_k)
+    
+    # TODO : Masked Attention implementation for the decoder
 
     weights = F.softmax(scores,dim=-1)
     return torch.bmm(weights,v)
