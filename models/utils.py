@@ -74,7 +74,7 @@ class MultiAttentionHead(nn.Module):
     def __init__(self,config):
         
         self.output_linear = nn.Linear(config.hidden_size , config.hidden_size)
-        self.attention_heads = [AttentionHead(config) for _ in config.num_heads]
+        self.attention_heads = nn.ModuleList([AttentionHead(config) for _ in config.num_heads])
         
     def forward(self,x):
         out = torch.cat([h(x) for h in self.attention_heads] , dim=-1)
