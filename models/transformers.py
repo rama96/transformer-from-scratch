@@ -143,7 +143,7 @@ class TransformerEndcoderLayer(nn.Module):
 
 
 
-class Encoder:
+class Encoder(nn.Module):
     """ Encoder Block of a transformer  """
     def __init__(self,config) -> None:
         super().__init__()
