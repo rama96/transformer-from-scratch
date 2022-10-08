@@ -1,15 +1,8 @@
-""" Contains the whoel transformers Architecture - Encoder , Decoder and combined """
-import torch.nn as nn
-from models.utils import Embeddings
-from models.utils import MultiAttentionHead , FeedForward
-
-""" Contains all the basic building blocks required to build a transformer from scratch """
+""" Contains the whole transformers Architecture - Encoder , Decoder and combined along with the basic building blocks required to create it """
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from math import sqrt
-from models.utils import CfgNode as CN
-import math
 
 class Embeddings(nn.Module):
     
@@ -22,9 +15,10 @@ class Embeddings(nn.Module):
     """
     
     def __init__(self,config):
-        self.token_embeddings = nn.Embedding(config.vocab_size , config.n_embd)
-        self.positional_embeddings = nn.Embedding(config.max_position_embeddings , config.n_embd)
-        self.LayerNorm = nn.LayerNorm(config.n_embd , eps=1e-12)
+        super().__init__()
+        self.token_embeddings = nn.Embedding(config.vocab_size , config.hidden_size)
+        self.positional_embeddings = nn.Embedding(config.max_position_embeddings , config.hidden_size)
+        self.LayerNorm = nn.LayerNorm(config.hidden_size , eps=1e-12)
         self.dropout = nn.Dropout()
     
     def forward(self,input_ids):
@@ -69,10 +63,11 @@ class AttentionHead(nn.Module):
     """ Splits the inputs into query , key and value and then performs scalar dot product to get the output for the same 
     """
     def __init__(self,config):
-        
-        self.linear_k = nn.Linear(config.n_embd , config.head_dim)
-        self.linear_v = nn.Linear(config.n_embd , config.head_dim)
-        self.linear_q = nn.Linear(config.n_embd , config.head_dim)
+        super().__init__()
+        head_dim = int((config.hidden_size / config.num_attention_heads))
+        self.linear_k = nn.Linear(config.hidden_size , head_dim)
+        self.linear_v = nn.Linear(config.hidden_size , head_dim)
+        self.linear_q = nn.Linear(config.hidden_size , head_dim)
 
 
     def forward(self,x):
@@ -86,9 +81,9 @@ class MultiAttentionHead(nn.Module):
     https://github.com/karpathy/minGPT/blob/7218bcfa527c65f164de791099de715b81a95106/mingpt/model.py
     """
     def __init__(self,config):
-        
-        self.output_linear = nn.Linear(config.n_embd , config.n_embd)
-        self.attention_heads = nn.ModuleList([AttentionHead(config) for _ in config.n_head])
+        super().__init__()
+        self.output_linear = nn.Linear(config.hidden_size , config.hidden_size)
+        self.attention_heads = nn.ModuleList([AttentionHead(config) for _ in range(config.num_attention_heads)])
         
     def forward(self,x):
         out = torch.cat([h(x) for h in self.attention_heads] , dim=-1)
@@ -97,10 +92,11 @@ class MultiAttentionHead(nn.Module):
 
 class FeedForward(nn.Module):
     def __init__(self,config):
-        self.cfc = nn.Linear(config.n_embd , config.intermediate_size)
+        super().__init__()
+        self.cfc = nn.Linear(config.hidden_size , config.intermediate_size)
         self.gelu = nn.GELU()
-        self.c_proj = nn.Linear( config.intermediate_size , config.n_embd )
-        self.dropout = nn.dropout()
+        self.c_proj = nn.Linear( config.intermediate_size , config.hidden_size)
+        self.dropout = nn.Dropout()
     
     def forward(self,x):
         x = self.linear_1(x) 
@@ -109,15 +105,15 @@ class FeedForward(nn.Module):
         x = self.dropout(x) 
         return x
 
-class TransformerEndcoderLayer:
+class TransformerEndcoderLayer(nn.Module):
     """ Contains the build blocks for an Encoder Transformer 
     Analgolus to Block in miniGPT written by Andrej Karpathy :
     https://github.com/karpathy/minGPT/blob/7218bcfa527c65f164de791099de715b81a95106/mingpt/model.py
     """
     def __init__(self,config) -> None:
-        
-        self.layer_norm_1 = nn.LayerNorm(config.n_embd)
-        self.layer_norm_2 = nn.LayerNorm(config.n_embd)
+        super().__init__()
+        self.layer_norm_1 = nn.LayerNorm(config.hidden_size)
+        self.layer_norm_2 = nn.LayerNorm(config.hidden_size)
         self.MultiAttentionHead = MultiAttentionHead(config)
         self.FeedForward = FeedForward(config)
 
@@ -126,13 +122,33 @@ class TransformerEndcoderLayer:
         x = x + self.MultiAttentionHead(self.layer_norm_1(x))
         x = x + self.FeedForward(self.layer_norm_2(x))
         return x
-        
 
-class TransformerEncoder:
+# class TransformerDecoderLayer(nn.Module):
+#     """ Contains the build blocks for an Encoder Transformer 
+#     Analgolus to Block in miniGPT written by Andrej Karpathy :
+#     https://github.com/karpathy/minGPT/blob/7218bcfa527c65f164de791099de715b81a95106/mingpt/model.py
+#     """
+#     def __init__(self,config) -> None:
+#         super().__init__()
+#         self.layer_norm_1 = nn.LayerNorm(config.hidden_size)
+#         self.layer_norm_2 = nn.LayerNorm(config.hidden_size)
+#         self.MultiAttentionHead = MultiAttentionHead(config)
+#         self.FeedForward = FeedForward(config)
+
+#     def forward(self , x):
+        
+#         x = x + self.MultiAttentionHead(self.layer_norm_1(x))
+#         x = x + self.FeedForward(self.layer_norm_2(x))
+#         return x
+
+
+
+class Encoder:
     """ Encoder Block of a transformer  """
     def __init__(self,config) -> None:
+        super().__init__()
         self.Embeddings = Embeddings(config)
-        self.encoder_layers = nn.ModuleList([TransformerEndcoderLayer(config) for _ in config.n_layer])
+        self.encoder_layers = nn.ModuleList([TransformerEndcoderLayer(config) for _ in range(config.num_hidden_layers)])
 
     def forward(self , x):
         x = self.Embeddings(x)
@@ -140,136 +156,39 @@ class TransformerEncoder:
             x = layer(x)
         return x
 
-# class TransformerDecoderLayer:
-#     """ Contains the build blocks for an Decoder Transformer """
-#     def __init__(self) -> None:
-#         pass
-#     def forward(self , x):
-#         pass
 
-# class TransformerDecoder:
-#     """ Contains the build blocks for an Decoder Transformer """
-#     def __init__(self) -> None:
-#         pass
-#     def forward(self , x):
-#         pass
-
-class GPT(nn.Module):
-    """ GPT language Model """
-    
-    @staticmethod
-    def get_default_config():
-        C = CN()
-        # either model_type or (n_layer, n_head, n_embd) must be given in the config
-        C.model_type = 'gpt'
-        C.n_layer = None
-        C.n_head = None
-        C.n_embd =  None
-        # these options must be filled in externally
-        C.vocab_size = None
-        C.block_size = None # max_seq_len , config.max_position_embeddings
-        # dropout hyperparameters
-        C.embd_pdrop = 0.1
-        C.resid_pdrop = 0.1
-        C.attn_pdrop = 0.1
-        return C
-
-    def __init__(self , config) -> None:
+class TransformersForClassification(nn.Module):
+    """ Classifies the given text as positive or negative or neutral """
+    def __init__(self , config):
         super().__init__()
-        assert config.vocab_size is not None
-        assert config.block_size is not None
-        self.block_size = config.block_size
-
-        type_given = config.model_type is not None
-        params_given = all([config.n_layer is not None, config.n_head is not None, config.n_embd is not None])
-        assert type_given ^ params_given # exactly one of these (XOR)
-        if type_given:
-            # translate from model_type to detailed configuration
-            config.merge_from_dict({
-                # names follow the huggingface naming conventions
-                # GPT-1
-                'openai-gpt':   dict(n_layer=12, n_head=12, n_embd=768),  # 117M params
-                # GPT-2 configs
-                'gpt2':         dict(n_layer=12, n_head=12, n_embd=768),  # 124M params
-                'gpt2-medium':  dict(n_layer=24, n_head=16, n_embd=1024), # 350M params
-                'gpt2-large':   dict(n_layer=36, n_head=20, n_embd=1280), # 774M params
-                'gpt2-xl':      dict(n_layer=48, n_head=25, n_embd=1600), # 1558M params
-                # Gophers
-                'gopher-44m':   dict(n_layer=8, n_head=16, n_embd=512),
-                # (there are a number more...)
-                # I made these tiny models up
-                'gpt-mini':     dict(n_layer=6, n_head=6, n_embd=192),
-                'gpt-micro':    dict(n_layer=4, n_head=4, n_embd=128),
-                'gpt-nano':     dict(n_layer=3, n_head=3, n_embd=48),
-            }[config.model_type])
-
-        self.transformer = TransformerEncoder(config)
-        self.lm_head = nn.Linear(config.n_embd, config.vocab_size, bias=False)
-
-        # init all weights, and apply a special scaled init to the residual projections, per GPT-2 paper
-        self.apply(self._init_weights)
-        for pn, p in self.named_parameters():
-            if pn.endswith('c_proj.weight'):
-                torch.nn.init.normal_(p, mean=0.0, std=0.02/math.sqrt(2 * config.n_layer))
-
-        # report number of parameters (note we don't count the decoder parameters in lm_head)
-        n_params = sum(p.numel() for p in self.transformer.parameters())
-        print("number of parameters: %.2fM" % (n_params/1e6,))
-    
-    def _init_weights(self, module):
-        if isinstance(module, nn.Linear):
-            # Assinging weights based on normal distribution
-            # Assinging bias as 0s
-            torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
-            if module.bias is not None:
-                torch.nn.init.zeros_(module.bias)
-        elif isinstance(module, nn.Embedding):
-            # Assinging weights based on normal distribution
-            torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
-        elif isinstance(module, nn.LayerNorm):
-            # Assining weights as 1s and bias as 0s
-            torch.nn.init.zeros_(module.bias) 
-            torch.nn.init.ones_(module.weight)
-    
-    @classmethod
-    def from_pretrained(cls, model_type):
-        """
-        Initialize a pretrained GPT model by copying over the weights
-        from a huggingface/transformers checkpoint.
-        """
-        assert model_type in {'gpt2', 'gpt2-medium', 'gpt2-large', 'gpt2-xl'}
-        from transformers import GPT2LMHeadModel
-
-        # create a from-scratch initialized minGPT model
-        config = cls.get_default_config()
-        config.model_type = model_type
-        config.vocab_size = 50257 # openai's model vocabulary
-        config.block_size = 1024  # openai's model block_size
-        model = GPT(config)
+        self.encoder = Encoder(config)
+        self.dropout = nn.Dropout(config.hidden_dropout_prob)
+        self.classifier = nn.Linear(config.hidden_size,config.num_labels)
         
-        sd = model.state_dict() # Returns dict of all params 
+    def forward(self,x):
+        x = self.encoder(x)[: , 0 , :]
+        x = self.dropout(x)
+        x = self.classifier(x)
+        return x
 
-        # init a huggingface/transformers model
-        model_hf = GPT2LMHeadModel.from_pretrained(model_type)
-        sd_hf = model_hf.state_dict()
 
-        # copy while ensuring all of the parameters are aligned and match in names and shapes
-        keys = [k for k in sd_hf if not k.endswith('attn.masked_bias')] # ignore these
-        transposed = ['attn.c_attn.weight', 'attn.c_proj.weight', 'mlp.c_fc.weight', 'mlp.c_proj.weight']
-        # basically the openai checkpoints use a "Conv1D" module, but we only want to use a vanilla nn.Linear.
-        # this means that we have to transpose these weights when we import them
-        assert len(keys) == len(sd)
-        for k in keys:
-            if any(k.endswith(w) for w in transposed):
-                # special treatment for the Conv1D weights we need to transpose
-                assert sd_hf[k].shape[::-1] == sd[k].shape
-                with torch.no_grad():
-                    sd[k].copy_(sd_hf[k].t())
-            else:
-                # vanilla copy over the other parameters
-                assert sd_hf[k].shape == sd[k].shape
-                with torch.no_grad():
-                    sd[k].copy_(sd_hf[k])
 
-        return model
+
+# class Decoder:
+#     """ Encoder Block of a transformer  """
+#     def __init__(self,config) -> None:
+#         super().__init__()
+#         self.Embeddings = Embeddings(config)
+#         self.encoder_layers = nn.ModuleList([TransformerEndcoderLayer(config) for _ in range(config.num_hidden_layers)])
+
+#     def forward(self , x):
+#         x = self.Embeddings(x)
+#         for layer in self.encoder_layers:
+#             x = layer(x)
+#         return x
+
+
+if __name__ == "__main__":
+    encoder = Encoder()
+    text = "This pizza was really good"
 
