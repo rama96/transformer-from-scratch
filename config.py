@@ -5,5 +5,6 @@ model_config = {
     'inter_dim' : 768*4 , 
     'head_dim' : 64 , 
     'num_heads' : 768//64 , 
-    'dropout_prob' : 0.2
+    'dropout_prob' : 0.2,
+    'num_blocks' : 10
 }    

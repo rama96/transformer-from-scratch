@@ -143,3 +143,12 @@ class Transformer(nn.Module):
         return x
 
 
+if __name__ == "__main__":
+    transformer = Transformer(model_config)
+
+    x = torch.tensor([[1,2,3,6,8],
+            [5,2,3,6,8],
+            [4,2,3,6,8]])
+
+
+    print(transformer(x).shape)
